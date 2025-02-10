@@ -1,24 +1,46 @@
-import requests
-from bs4 import BeautifulSoup
+import sqlite3
+from flask import(
+    Flask,
+    redirect,
+    render_template,
+    request,
+    jsonify
+)
 
 
-link = 'https://www.olx.kz/elektronika/igry-i-igrovye-pristavki/pristavki/karaganda/?search%5Bfilter_enum_console_manufacturers%5D%5B0%5D=2272'
-
-response = requests.get(link).text
-
-soup = BeautifulSoup(response, 'lxml')
+app = Flask(__name__)
 
 
+def create_db():
+    with sqlite3.connect('users.db') as connection:
+        cursor = connection.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT,
+                password TEXT
+            )
+        """)
+        connection.commit()
 
-main_div = soup.find('div', class_ = 'css-j0t2x2')
 
-title_div = main_div.find_all('h4', class_ = 'css-1sq4ur2')
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    name = data.get('name', '')
+    email = data.get('email', '')
+    password = data.get('password', '')
 
 
-price_div = main_div.find_all('p', class_ = 'css-6j1qjp')
 
+    with sqlite3.connect('users.db') as connection:
+        cursor = connection.cursor()
+        cursor.execute("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", (name, email, password))
+        connection.commit()
 
+    return jsonify({"message": "Пользователь зарегистрирован успешно"}), 201
 
-for i in range(len(title_div)):
-    with open('text.txt', 'a', encoding='utf-8') as file:
-        file.write(f'{title_div[i].text}, {price_div[i].text} \n')
+if __name__ == '__main__':
+    create_db()
+    app.run(debug=True)
